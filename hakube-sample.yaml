@@ -1,0 +1,78 @@
+apiVersion: hakube.io/v1beta1
+
+kind: HAKubeController
+metadata:
+  name: saphana-scaleup
+spec:
+  nodeSelector:
+    node-role.kubernetes.io/worker: saphana
+  resources:
+    - name: SAPHanaTopology
+      command: ["SAPHanaTopology"]
+      replicas: 2
+      options:
+        "provider": "suse"
+        "SID": "HXE"
+        "InstanceNumber": "90"
+      operations:
+        - operation: start
+          onfail: restart
+          timeout: 600
+        - operation: stop
+          onfail: block
+          timeout: 300
+        - operation: monitor
+          onfail: restart
+          interval: 10
+          timeout: 600
+    - name: SAPHana
+      command: ["SAPHana"]
+      replicas: 2
+      options:
+        "provider": "suse"
+        "SID": "HXE"
+        "InstanceNumber": "90"
+        "PREFER_SITE_TAKEOVER": "true"
+        "DUPLICATE_PRIMARY_TIMEOUT": "7200"
+        "AUTOMATED_REGISTER": "false"
+      operations:
+        - operation: start
+          onfail: restart
+          timeout: 600
+        - operation: stop
+          onfail: block
+          timeout: 3600
+        - operation: monitor
+          onfail: restart
+          interval: 60
+          timeout: 700
+        - operation: promote
+          timeout: 3600
+          onfail: restart
+        - operation: demote
+          onfail: stop
+          timeout: 3600
+    - name: SAPHana-VIP
+      command: ["IPaddr2"]
+      options:
+          "ip": "10.10.10.55"
+          "cidr_netmask": "24"
+          "nic": "eth1"
+      operations:
+        - operation: start
+          onfail: restart
+          timeout: 10
+        - operation: stop
+          onfail: block
+          timeout: 10
+        - operation: monitor
+          onfail: restart
+          interval: 5
+          timeout: 5
+      nodeAffinity:
+        selector:
+          resource: SAPHana
+          condition: promoted
+  startSequence:
+    - SAPHanaTopology
+    - SAPHana

@@ -1,0 +1,438 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.4.1
+  creationTimestamp: null
+  name: hakubecontrollers.hakube.io
+spec:
+  group: hakube.io
+  names:
+    kind: HAKubeController
+    listKind: HAKubeControllerList
+    plural: hakubecontrollers
+    shortNames:
+    - hkb
+    singular: hakubecontroller
+  scope: Namespaced
+  versions:
+  - name: v1beta1
+    schema:
+      openAPIV3Schema:
+        description: HAKubeController represents the 'blueprint' or in other words
+          the configuration of the high availability resource/service manager controller
+          together with the resources/services managed.
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: HAKubeControllerSpec defines the desired state of a HAKubeController
+            properties:
+              attributeStorage:
+                default: true
+                description: Whether to create additional node attributes storage
+                  object. If a resource with multiple replicas is configured, an node
+                  attributes object storage is created unless if explicitly disabled.
+                type: boolean
+              fencing:
+                default: true
+                description: Global cluster fencing is on by default. Also failed
+                  nodes running resources will be fenced by the fencing/remediation
+                  operator.
+                type: boolean
+              metadata:
+                description: Metadata contains metadata for HAKubeController resources
+                properties:
+                  annotations:
+                    additionalProperties:
+                      type: string
+                    type: object
+                  labels:
+                    additionalProperties:
+                      type: string
+                    type: object
+                type: object
+              nodeSelector:
+                additionalProperties:
+                  type: string
+                default:
+                  node-role.kubernetes.io/worker: saphana
+                description: NodeSelector targeting specific worker Nodes. Will deploy
+                  the worker agents on the target Nodes.
+                type: object
+              resources:
+                description: One or more resources the high availability resource
+                  manager is responsible for.
+                items:
+                  description: HAKubeResourceSpec defines the 'blueprint' or in other
+                    words configuration for a resource/service, that is managed from
+                    the high availability resource/service manager.
+                  properties:
+                    command:
+                      description: Entry point command for the resource agent.
+                      items:
+                        type: string
+                      type: array
+                    disabled:
+                      default: false
+                      description: Disable/stop the resource.
+                      type: boolean
+                    metadata:
+                      description: An additional metadata for the resource.
+                      properties:
+                        annotations:
+                          additionalProperties:
+                            type: string
+                          type: object
+                        labels:
+                          additionalProperties:
+                            type: string
+                          type: object
+                      type: object
+                    name:
+                      description: Name is the unique name of the resource.
+                      type: string
+                    nodeAffinity:
+                      description: nodeAffinity defines terms that constrain the selection
+                        of the worker node a resource can be scheduled to run on.
+                      properties:
+                        match:
+                          default: false
+                          description: If set, reverse will act as anti-affinity rule
+                            and the selected node is not used for scheduling the resource.
+                          type: boolean
+                        selector:
+                          description: Selector specifies hard node constraints that
+                            must be met.
+                          properties:
+                            condition:
+                              description: Resource status condition that matches
+                                a resource clone/replica.
+                              type: string
+                            resource:
+                              description: Target resource to be matched from the
+                                resources list defined within the HAKubeController.
+                              type: string
+                          required:
+                          - condition
+                          - resource
+                          type: object
+                      required:
+                      - selector
+                      type: object
+                    operations:
+                      description: Operations are actions the resource manager performs
+                        on a resource by executing a resource agent program. Resource
+                        agents support a common set of operations such as start, stop
+                        and monitor, and may implement others.
+                      items:
+                        description: Operations are actions the resource manager can
+                          perform on a resource by executing a resource agent program.
+                        properties:
+                          enabled:
+                            default: true
+                            description: Disable the operation
+                            type: boolean
+                          interval:
+                            default: 0
+                            description: How frequently (in seconds) to perform the
+                              operation. A value of 0 means never. A positive value
+                              defines a recurring action, which is typically used
+                              with monitor.
+                            format: int32
+                            type: integer
+                          onfail:
+                            default: restart
+                            description: The action to take if this operation fails.
+                            enum:
+                            - restart
+                            - fence
+                            - ignore
+                            - suicide
+                            - block
+                            - stop
+                            - standby
+                            type: string
+                          operation:
+                            default: notify
+                            description: The operation to perform.
+                            enum:
+                            - start
+                            - stop
+                            - monitor
+                            - notify
+                            - promote
+                            - demote
+                            type: string
+                          timeout:
+                            default: 5
+                            description: How long (in seconds) to wait before declaring
+                              the operation has failed.
+                            format: int32
+                            type: integer
+                        type: object
+                      type: array
+                      x-kubernetes-list-map-keys:
+                      - operation
+                      x-kubernetes-list-type: map
+                    options:
+                      additionalProperties:
+                        type: string
+                      description: Additional resources options specific to the given
+                        resource.
+                      type: object
+                    replicas:
+                      default: 1
+                      description: How many resource replicas/clones should be started.
+                      format: int32
+                      minimum: 1
+                      type: integer
+                    workers:
+                      description: Workers are K8s worker nodes. Specify which nodes
+                        are eligible to execute the resource, or just add a constrain/limit
+                        for workers who will be running the resource.
+                      items:
+                        type: string
+                      type: array
+                  required:
+                  - command
+                  - name
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - name
+                x-kubernetes-list-type: map
+              shutdown:
+                default: false
+                description: Whether or not the HAKubeController should be stopped.
+                  When this is true all resources are stopped as well.
+                type: boolean
+              startSequence:
+                description: Defines the start sequence of the resources previously
+                  defined in the 'Resources' section, If there is a dependency constraints
+                  for a resource to start before other resources, otherwise leave
+                  empty.
+                items:
+                  type: string
+                type: array
+            type: object
+          status:
+            description: HAKubeStatus defines the observed state of HAKube cluster
+            properties:
+              resources:
+                description: Current state of HAKube resources.
+                items:
+                  description: HAKubeResourceStatus defines the observed state of
+                    HAKubeResourceSpec.
+                  properties:
+                    conditions:
+                      description: 'conditions represent the observations of a resource
+                        current state Known .status.conditions.type are: "ConditionResourceFailed"'
+                      items:
+                        description: "Condition contains details for one aspect of
+                          the current state of this API Resource. --- This struct
+                          is intended for direct use as an array at the field path
+                          .status.conditions.  For example, \n \ttype FooStatus struct{
+                          \t    // Represents the observations of a foo's current
+                          state. \t    // Known .status.conditions.type are: \"Available\",
+                          \"Progressing\", and \"Degraded\" \t    // +patchMergeKey=type
+                          \t    // +patchStrategy=merge \t    // +listType=map \t
+                          \   // +listMapKey=type \t    Conditions []metav1.Condition
+                          `json:\"conditions,omitempty\" patchStrategy:\"merge\" patchMergeKey:\"type\"
+                          protobuf:\"bytes,1,rep,name=conditions\"` \n \t    // other
+                          fields \t}"
+                        properties:
+                          lastTransitionTime:
+                            description: lastTransitionTime is the last time the condition
+                              transitioned from one status to another. This should
+                              be when the underlying condition changed.  If that is
+                              not known, then using the time when the API field changed
+                              is acceptable.
+                            format: date-time
+                            type: string
+                          message:
+                            description: message is a human readable message indicating
+                              details about the transition. This may be an empty string.
+                            maxLength: 32768
+                            type: string
+                          observedGeneration:
+                            description: observedGeneration represents the .metadata.generation
+                              that the condition was set based upon. For instance,
+                              if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration
+                              is 9, the condition is out of date with respect to the
+                              current state of the instance.
+                            format: int64
+                            minimum: 0
+                            type: integer
+                          reason:
+                            description: reason contains a programmatic identifier
+                              indicating the reason for the condition's last transition.
+                              Producers of specific condition types may define expected
+                              values and meanings for this field, and whether the
+                              values are considered a guaranteed API. The value should
+                              be a CamelCase string. This field may not be empty.
+                            maxLength: 1024
+                            minLength: 1
+                            pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                            type: string
+                          status:
+                            description: status of the condition, one of True, False,
+                              Unknown.
+                            enum:
+                            - "True"
+                            - "False"
+                            - Unknown
+                            type: string
+                          type:
+                            description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                              --- Many .condition.type values are consistent across
+                              resources like Available, but because arbitrary conditions
+                              can be useful (see .node.status.conditions), the ability
+                              to deconflict is important. The regex it matches is
+                              (dns1123SubdomainFmt/)?(qualifiedNameFmt)
+                            maxLength: 316
+                            pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                            type: string
+                        required:
+                        - lastTransitionTime
+                        - message
+                        - reason
+                        - status
+                        - type
+                        type: object
+                      type: array
+                      x-kubernetes-list-map-keys:
+                      - type
+                      x-kubernetes-list-type: map
+                    failCount:
+                      default: 0
+                      description: Attempts to restart resource when failing.
+                      format: int32
+                      type: integer
+                    node:
+                      default: ""
+                      description: Node associated with the worker Pod running the
+                        Resource. A replicated/cloned Resource can be running on multiple
+                        Nodes.
+                      type: string
+                    resource:
+                      default: ""
+                      description: Resource associated with the status.
+                      type: string
+                    uid:
+                      default: ""
+                      description: UID is the generated unique identifier for the
+                        resource status. It is intended to distinguish between occurrences
+                        of similar entities in the controller's status list, for example
+                        when resource has multiple replicas running on different nodes.
+                      type: string
+                  required:
+                  - failCount
+                  - node
+                  - resource
+                  - uid
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - uid
+                x-kubernetes-list-type: map
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.4.1
+  creationTimestamp: null
+  name: hakubenodeattributes.hakube.io
+spec:
+  group: hakube.io
+  names:
+    kind: HAKubeNodeAttributes
+    listKind: HAKubeNodeAttributesList
+    plural: hakubenodeattributes
+    shortNames:
+    - hkbna
+    - hkbnodeattr
+    singular: hakubenodeattributes
+  scope: Namespaced
+  versions:
+  - name: v1beta1
+    schema:
+      openAPIV3Schema:
+        description: HAKubeNodeAttributes holds additional data in the form of Node
+          attributes objects for the RA to read and write.
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          nodeAttributes:
+            description: Special values to be set using attributes. An attribute has
+              a name, and may have a different value for each node (node-attribute).
+            items:
+              properties:
+                lifetime:
+                  default: forever
+                  description: How long to keep the attribute
+                  type: string
+                name:
+                  description: Attribute name.
+                  type: string
+                node:
+                  description: Node name.
+                  type: string
+                value:
+                  description: Attribute value.
+                  type: string
+              required:
+              - lifetime
+              - name
+              - node
+              - value
+              type: object
+            type: array
+          nodeList:
+            description: Node list targeting specific set of worker Nodes in the cluster
+              using the object to store attributes.
+            items:
+              type: string
+            type: array
+        type: object
+    served: true
+    storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
